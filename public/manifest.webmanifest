@@ -1,0 +1,16 @@
+{
+  "name": "GG Cricket Manager",
+  "short_name": "GG Cricket",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#071b18",
+  "theme_color": "#071b18",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
