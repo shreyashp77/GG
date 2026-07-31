@@ -8,6 +8,7 @@ import { PlayerBrowser } from "./components/PlayerBrowser";
 import { SettingsPage } from "./components/SettingsPage";
 import { SquadPage } from "./components/SquadPage";
 import { SeasonPage } from "./components/SeasonPage";
+import { AuctionPage } from "./components/AuctionPage";
 import { Mark } from "./components/Mark";
 import { TeamBadge } from "./components/TeamBadge";
 import { franchises } from "./data/franchises";
@@ -159,12 +160,7 @@ export default function App() {
             <SeasonPage career={activeCareer} onCareerUpdated={setCareer} />
           )}
           {page === "auction" && (
-            <section className="placeholder-page">
-              <p className="eyebrow">Coming in the next slice</p>
-              <h1>Live player auction</h1>
-              <p>The domain boundary is ready; this interaction arrives with the season and auction engines.</p>
-              <button onClick={() => setPage("home")}>Back to club hub</button>
-            </section>
+            <AuctionPage career={activeCareer} onCareerUpdated={setCareer} />
           )}
         </div>
       </div>

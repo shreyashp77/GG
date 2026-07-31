@@ -142,5 +142,6 @@ export function advanceCareerToNextSeason(career: CareerSave): CareerSave {
         championId: career.seasonState.championId,
       },
     ],
+    auctionState: null,
   };
 }

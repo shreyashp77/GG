@@ -766,3 +766,45 @@ button { cursor: pointer; }
   .team-option { min-height: 69px; }
   .setup-intro h1 { font-size: 36px; }
 }
+
+.auction-heading { margin-bottom: 24px; }
+.auction-summary { display: flex; align-items: baseline; gap: 7px 10px; color: var(--muted); }
+.auction-summary strong { color: var(--ink); font-size: 23px; }
+.auction-summary span { margin-right: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+.auction-layout { display: grid; grid-template-columns: minmax(280px, .8fr) minmax(0, 1.5fr); gap: 18px; }
+.auction-lots, .auction-live-card, .auction-bidders { border: 1px solid var(--line); background: var(--card); }
+.auction-lots { align-self: start; }
+.auction-lot-row { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 10px; padding: 13px 15px; border-top: 1px solid var(--line); }
+.auction-lot-row.is-active { background: rgba(216, 255, 99, .13); box-shadow: inset 3px 0 var(--lime); }
+.auction-lot-row > span { color: var(--muted); font: 700 10px "Space Mono"; }
+.auction-lot-row strong, .auction-lot-row small { display: block; }
+.auction-lot-row strong { font-size: 12px; }
+.auction-lot-row small { margin-top: 3px; color: var(--muted); font-size: 10px; }
+.auction-lot-row b { color: var(--green); font: 700 10px "Space Mono"; text-transform: uppercase; }
+.auction-main { display: grid; gap: 18px; }
+.auction-live-card, .auction-complete-card { padding: clamp(22px, 4vw, 42px); }
+.auction-player-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.auction-player-heading span, .auction-player-heading p { color: var(--muted); font-size: 11px; }
+.auction-player-heading h2 { margin: 8px 0 5px; font-size: clamp(25px, 3vw, 38px); }
+.auction-player-heading p { margin: 0; }
+.auction-player-heading > strong { color: var(--green); font: 700 clamp(20px, 3vw, 30px) "Space Mono"; }
+.auction-bid-status { display: flex; justify-content: space-between; gap: 12px; margin: 30px 0 20px; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+.auction-bid-status b { color: var(--ink); font-family: "Space Mono"; }
+.auction-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.auction-actions button, .auction-live-card > button, .schedule-simulate-button { padding: 11px 15px; border: 0; background: var(--green); color: white; font-size: 10px; font-weight: 700; }
+.auction-actions button:nth-child(n+2) { background: var(--ink); }
+.auction-actions button:disabled, .schedule-simulate-button:disabled { cursor: not-allowed; opacity: .45; }
+.auction-bidders { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); }
+.auction-bidders article { display: flex; align-items: center; gap: 10px; padding: 13px; background: var(--card); }
+.auction-bidders article.is-user { background: rgba(216, 255, 99, .12); }
+.auction-bidders strong, .auction-bidders span { display: block; }
+.auction-bidders strong { font-size: 11px; }
+.auction-bidders span { margin-top: 3px; color: var(--muted); font-size: 9px; }
+.season-complete-actions { display: grid; gap: 8px; }
+.season-champion { color: var(--green); font: 700 11px "Space Mono"; white-space: nowrap; }
+
+@media (max-width: 760px) {
+  .auction-layout { grid-template-columns: 1fr; }
+  .auction-bidders { grid-template-columns: 1fr; }
+  .auction-summary { display: none; }
+}
