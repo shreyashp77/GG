@@ -34,4 +34,13 @@ describe("2027 season schedule", () => {
       }
     }
   });
+
+  it("supports later career seasons with season-specific fixture IDs and dates", () => {
+    const schedule = generateSeasonSchedule(99, 2028);
+
+    expect(schedule.season).toBe(2028);
+    expect(schedule.leagueFixtures[0].id).toMatch(/^ipl-2028-/);
+    expect(schedule.leagueFixtures[0].date.startsWith("2028-")).toBe(true);
+    expect(schedule.playoffs.at(-1)?.id).toBe("ipl-2028-final");
+  });
 });

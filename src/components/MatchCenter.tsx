@@ -135,7 +135,7 @@ export function MatchCenter({
         <div className="match-page-heading">
           <div>
             <p className="eyebrow">
-              {scheduledFixture ? "IPL 2027 · Scheduled fixture" : "Vertical slice 2 · Exhibition"}
+              {scheduledFixture ? `IPL ${fixture?.season} · Scheduled fixture` : "Vertical slice 2 · Exhibition"}
             </p>
             <h1>Match centre</h1>
             <p>

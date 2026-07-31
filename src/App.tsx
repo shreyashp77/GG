@@ -55,7 +55,7 @@ export default function App() {
   const activeCareer = career;
   const team = franchises.find((item) => item.id === activeCareer.franchiseId)!;
   const careerDate = new Date(`${activeCareer.currentDate}T12:00:00`);
-  const careerStart = new Date("2026-06-08T12:00:00");
+  const careerStart = new Date(`${activeCareer.season - 1}-06-08T12:00:00`);
   const dayNumber = Math.floor((careerDate.getTime() - careerStart.getTime()) / 86_400_000) + 1;
   const headerDate = careerDate
     .toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })

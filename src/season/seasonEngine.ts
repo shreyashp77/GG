@@ -1,4 +1,5 @@
 import type {
+  CareerSave,
   CompletedFixture,
   Fixture,
   FranchiseId,
@@ -116,4 +117,30 @@ export function simulateUnplayedAIFixtures(
         fixture.awayId !== userTeamId,
     )
     .map((fixture) => simulateFixture(fixture, seasonSeed));
+}
+
+export function advanceCareerToNextSeason(career: CareerSave): CareerSave {
+  if (career.seasonState.championId === null) {
+    throw new Error("The current season must have a champion before advancing");
+  }
+
+  const nextSeason = career.season + 1;
+  return {
+    ...career,
+    season: nextSeason,
+    currentDate: `${nextSeason}-03-01`,
+    seasonState: {
+      season: nextSeason,
+      scheduleSeed: (career.seed ^ nextSeason) >>> 0,
+      completedFixtures: [],
+      championId: null,
+    },
+    seasonHistory: [
+      ...career.seasonHistory,
+      {
+        season: career.season,
+        championId: career.seasonState.championId,
+      },
+    ],
+  };
 }

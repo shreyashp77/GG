@@ -1,6 +1,6 @@
 export const DATABASE_VERSION = "ipl-2026.1";
 export const RULESET_VERSION = "ipl-2027-frozen.1";
-export const SAVE_SCHEMA_VERSION = 3;
+export const SAVE_SCHEMA_VERSION = 4;
 
 export type FranchiseId =
   | "csk" | "dc" | "gt" | "kkr" | "lsg"
@@ -66,7 +66,7 @@ export interface Contract {
   playerId: string;
   franchiseId: FranchiseId;
   salaryLakhs: number;
-  season: 2027;
+  season: number;
 }
 
 export interface CareerSave {
@@ -76,11 +76,17 @@ export interface CareerSave {
   id: string;
   coachName: string;
   franchiseId: FranchiseId;
-  season: 2027;
+  season: number;
   currentDate: string;
   seed: number;
   createdAt: string;
   seasonState: SeasonState;
+  seasonHistory: SeasonSummary[];
+}
+
+export interface SeasonSummary {
+  season: number;
+  championId: FranchiseId;
 }
 
 export interface CompletedFixture {

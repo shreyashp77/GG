@@ -25,6 +25,7 @@ const career: CareerSave = {
     completedFixtures: [],
     championId: null,
   },
+  seasonHistory: [],
 };
 
 beforeEach(() => {

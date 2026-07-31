@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { CareerSave } from "../domain/models";
 import { generateSeasonSchedule } from "./schedule";
 import {
+  advanceCareerToNextSeason,
   fixtureSeed,
   simulateFixture,
   simulateUnplayedAIFixtures,
@@ -36,5 +38,43 @@ describe("season fixture simulation", () => {
 
     expect(remaining.some((fixture) => fixture.fixtureId === fixtures[0].id)).toBe(false);
     expect(remaining.every((fixture) => fixture.homeId !== "mi" && fixture.awayId !== "mi")).toBe(true);
+  });
+
+  it("starts the next season while preserving the previous champion", () => {
+    const career: CareerSave = {
+      id: "primary",
+      schemaVersion: 4,
+      databaseVersion: "ipl-2026.1",
+      rulesetVersion: "ipl-2027-frozen.1",
+      coachName: "Test Coach",
+      franchiseId: "mi",
+      season: 2027,
+      currentDate: "2027-06-01",
+      seed: 42,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      seasonState: {
+        season: 2027,
+        scheduleSeed: 42 ^ 2027,
+        completedFixtures: [{
+          fixtureId: "ipl-2027-final",
+          homeId: "mi",
+          awayId: "csk",
+          homeRuns: 180,
+          homeBalls: 120,
+          awayRuns: 170,
+          awayBalls: 120,
+        }],
+        championId: "mi",
+      },
+      seasonHistory: [],
+    };
+
+    const next = advanceCareerToNextSeason(career);
+    expect(next.season).toBe(2028);
+    expect(next.currentDate).toBe("2028-03-01");
+    expect(next.seasonState.scheduleSeed).toBe((42 ^ 2028) >>> 0);
+    expect(next.seasonState.completedFixtures).toEqual([]);
+    expect(next.seasonState.championId).toBeNull();
+    expect(next.seasonHistory).toEqual([{ season: 2027, championId: "mi" }]);
   });
 });

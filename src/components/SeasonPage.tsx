@@ -9,6 +9,7 @@ import {
   completedFixtureFromMatch,
 } from "../season/standings";
 import {
+  advanceCareerToNextSeason,
   simulatePlayoffs,
   simulateUnplayedAIFixtures,
 } from "../season/seasonEngine";
@@ -28,10 +29,11 @@ export function SeasonPage({
   const [activeFixture, setActiveFixture] = useState<Fixture | null>(null);
   const [simulatingAI, setSimulatingAI] = useState(false);
   const [simulatingPlayoffs, setSimulatingPlayoffs] = useState(false);
+  const [advancingSeason, setAdvancingSeason] = useState(false);
   const [seasonError, setSeasonError] = useState("");
   const schedule = useMemo(
-    () => generateSeasonSchedule(career.seasonState.scheduleSeed),
-    [career.seasonState.scheduleSeed],
+    () => generateSeasonSchedule(career.seasonState.scheduleSeed, career.season),
+    [career.season, career.seasonState.scheduleSeed],
   );
   const completedById = useMemo(
     () => new Map(career.seasonState.completedFixtures.map((result) => [result.fixtureId, result])),
@@ -144,6 +146,24 @@ export function SeasonPage({
     }
   }
 
+  async function advanceToNextSeason(): Promise<void> {
+    if (advancingSeason || career.seasonState.championId === null) return;
+
+    setAdvancingSeason(true);
+    setSeasonError("");
+    try {
+      const updated = advanceCareerToNextSeason(career);
+      await saveCareer(updated);
+      onCareerUpdated(updated);
+      setActiveFixture(null);
+      setTab("schedule");
+    } catch (error) {
+      setSeasonError(error instanceof Error ? error.message : "Unable to advance the season");
+    } finally {
+      setAdvancingSeason(false);
+    }
+  }
+
   async function recordFixtureResult(
     fixture: Fixture,
     result: MatchSimulationResult,
@@ -169,7 +189,7 @@ export function SeasonPage({
     <div className="season-page">
       <div className="season-tabs">
         <button className={tab === "schedule" ? "active" : ""} onClick={() => setTab("schedule")}>
-          2027 schedule
+          {career.season} schedule
         </button>
         <button className={tab === "standings" ? "active" : ""} onClick={() => setTab("standings")}>
           Standings
@@ -229,8 +249,8 @@ export function SeasonPage({
         <section className="schedule-page">
           <div className="schedule-heading">
             <div>
-              <p className="eyebrow">Vertical slice 3 · Seeded calendar</p>
-              <h1>IPL 2027</h1>
+            <p className="eyebrow">Vertical slice 3 · Seeded calendar</p>
+              <h1>IPL {career.season}</h1>
               <p>Seventy league fixtures, fourteen per club, followed by the four-match playoff series.</p>
             </div>
             <div className="schedule-stat">
@@ -245,9 +265,19 @@ export function SeasonPage({
               <span>→</span>
             </button>
             {career.seasonState.championId ? (
-              <strong className="season-champion">
-                Champion: {franchises.find((team) => team.id === career.seasonState.championId)?.shortName}
-              </strong>
+              <div className="season-complete-actions">
+                <strong className="season-champion">
+                  Champion: {franchises.find((team) => team.id === career.seasonState.championId)?.shortName}
+                </strong>
+                <button
+                  className="schedule-simulate-button"
+                  disabled={advancingSeason}
+                  onClick={advanceToNextSeason}
+                >
+                  {advancingSeason ? "Starting season…" : `Start ${career.season + 1} season`}
+                  <span>→</span>
+                </button>
+              </div>
             ) : leagueComplete ? (
               <button
                 className="schedule-simulate-button"

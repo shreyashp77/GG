@@ -11,7 +11,7 @@ export interface PlayoffTemplate {
 }
 
 export interface SeasonSchedule {
-  season: 2027;
+  season: number;
   seed: number;
   leagueFixtures: Fixture[];
   playoffs: PlayoffTemplate[];
@@ -37,7 +37,7 @@ function dateFromOffset(start: Date, offset: number): string {
   return date.toISOString().slice(0, 10);
 }
 
-export function generateSeasonSchedule(seed: number): SeasonSchedule {
+export function generateSeasonSchedule(seed: number, season = 2027): SeasonSchedule {
   const teamIds = franchises.map((team) => team.id);
   const pairings: Pairing[] = [];
 
@@ -69,7 +69,7 @@ export function generateSeasonSchedule(seed: number): SeasonSchedule {
 
   const random = new SeededRandom(seed);
   const orderedPairings = shuffled(pairings, random);
-  const start = new Date(Date.UTC(2027, 2, 20));
+  const start = new Date(Date.UTC(season, 2, 20));
   const dayFixtures = new Map<number, Pairing[]>();
 
   const leagueFixtures = orderedPairings.map((pairing, index) => {
@@ -102,8 +102,8 @@ export function generateSeasonSchedule(seed: number): SeasonSchedule {
     }
 
     return {
-      id: `ipl-2027-${String(index + 1).padStart(2, "0")}`,
-      season: 2027,
+      id: `ipl-${season}-${String(index + 1).padStart(2, "0")}`,
+      season,
       homeId: pairing.homeId,
       awayId: pairing.awayId,
       date: dateFromOffset(start, dayOffset),
@@ -116,28 +116,28 @@ export function generateSeasonSchedule(seed: number): SeasonSchedule {
   );
   const playoffs: PlayoffTemplate[] = [
     {
-      id: "ipl-2027-q1",
+      id: `ipl-${season}-q1`,
       date: dateFromOffset(lastLeagueDate, 2),
       stage: "qualifier-1",
       homeSeed: "1st",
       awaySeed: "2nd",
     },
     {
-      id: "ipl-2027-eliminator",
+      id: `ipl-${season}-eliminator`,
       date: dateFromOffset(lastLeagueDate, 3),
       stage: "eliminator",
       homeSeed: "3rd",
       awaySeed: "4th",
     },
     {
-      id: "ipl-2027-q2",
+      id: `ipl-${season}-q2`,
       date: dateFromOffset(lastLeagueDate, 5),
       stage: "qualifier-2",
       homeSeed: "Q1 loser",
       awaySeed: "Eliminator winner",
     },
     {
-      id: "ipl-2027-final",
+      id: `ipl-${season}-final`,
       date: dateFromOffset(lastLeagueDate, 7),
       stage: "final",
       homeSeed: "Q1 winner",
@@ -145,5 +145,5 @@ export function generateSeasonSchedule(seed: number): SeasonSchedule {
     },
   ];
 
-  return { season: 2027, seed, leagueFixtures, playoffs };
+  return { season, seed, leagueFixtures, playoffs };
 }
