@@ -1,6 +1,6 @@
 export const DATABASE_VERSION = "ipl-2026.1";
 export const RULESET_VERSION = "ipl-2027-frozen.1";
-export const SAVE_SCHEMA_VERSION = 4;
+export const SAVE_SCHEMA_VERSION = 5;
 
 export type FranchiseId =
   | "csk" | "dc" | "gt" | "kkr" | "lsg"
@@ -82,6 +82,7 @@ export interface CareerSave {
   createdAt: string;
   seasonState: SeasonState;
   seasonHistory: SeasonSummary[];
+  auctionState: AuctionState | null;
 }
 
 export interface SeasonSummary {
@@ -132,10 +133,37 @@ export interface Fixture {
 
 export interface AuctionState {
   season: number;
-  currentPlayerId: string | null;
-  highBidLakhs: number;
-  highBidderId: FranchiseId | null;
-  status: "not-started" | "bidding" | "sold" | "unsold" | "complete";
+  seed: number;
+  currentLotIndex: number | null;
+  currentBidLakhs: number;
+  currentBidderId: FranchiseId | null;
+  status: "not-started" | "ready" | "bidding" | "complete";
+  lots: AuctionLot[];
+  bidders: AuctionBidderState[];
+  bidHistory: AuctionBid[];
+}
+
+export interface AuctionLot {
+  id: string;
+  playerId: string;
+  basePriceLakhs: number;
+  overseas: boolean;
+  status: "pending" | "sold" | "unsold";
+  soldTo: FranchiseId | null;
+  soldPriceLakhs: number | null;
+}
+
+export interface AuctionBidderState {
+  franchiseId: FranchiseId;
+  purseLakhs: number;
+  playerIds: string[];
+  overseasCount: number;
+}
+
+export interface AuctionBid {
+  lotId: string;
+  bidderId: FranchiseId;
+  amountLakhs: number;
 }
 
 export interface Tactics {

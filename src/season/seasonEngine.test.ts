@@ -43,7 +43,7 @@ describe("season fixture simulation", () => {
   it("starts the next season while preserving the previous champion", () => {
     const career: CareerSave = {
       id: "primary",
-      schemaVersion: 4,
+      schemaVersion: 5,
       databaseVersion: "ipl-2026.1",
       rulesetVersion: "ipl-2027-frozen.1",
       coachName: "Test Coach",
@@ -67,6 +67,7 @@ describe("season fixture simulation", () => {
         championId: "mi",
       },
       seasonHistory: [],
+      auctionState: null,
     };
 
     const next = advanceCareerToNextSeason(career);

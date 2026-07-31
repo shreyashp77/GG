@@ -31,6 +31,19 @@ function migrateCareer(raw: unknown): CareerSave | null {
   }
 
   if (
+    candidate.schemaVersion === 4 &&
+    candidate.seasonState &&
+    typeof candidate.seed === "number" &&
+    typeof candidate.season === "number"
+  ) {
+    return {
+      ...candidate,
+      schemaVersion: SAVE_SCHEMA_VERSION,
+      auctionState: null,
+    } as CareerSave;
+  }
+
+  if (
     candidate.schemaVersion === 3 &&
     candidate.seasonState &&
     typeof candidate.seed === "number" &&
@@ -40,6 +53,7 @@ function migrateCareer(raw: unknown): CareerSave | null {
       ...candidate,
       schemaVersion: SAVE_SCHEMA_VERSION,
       seasonHistory: [],
+      auctionState: null,
     } as CareerSave;
   }
 
@@ -57,6 +71,7 @@ function migrateCareer(raw: unknown): CareerSave | null {
         championId: null,
       },
       seasonHistory: [],
+      auctionState: null,
     } as CareerSave;
   }
 
@@ -70,6 +85,7 @@ function migrateCareer(raw: unknown): CareerSave | null {
       schemaVersion: SAVE_SCHEMA_VERSION,
       seasonState: seasonStateFor(candidate.seed, candidate.season),
       seasonHistory: [],
+      auctionState: null,
     } as CareerSave;
   }
 
@@ -125,6 +141,7 @@ export async function createCareer(
     createdAt,
     seasonState: seasonStateFor(seed, 2027),
     seasonHistory: [],
+    auctionState: null,
   };
 
   const database = await openDatabase();

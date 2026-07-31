@@ -26,6 +26,7 @@ const career: CareerSave = {
     championId: null,
   },
   seasonHistory: [],
+  auctionState: null,
 };
 
 beforeEach(() => {
