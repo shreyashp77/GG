@@ -19,6 +19,12 @@ const career: CareerSave = {
   currentDate: "2026-07-07",
   seed: 42,
   createdAt: "2026-01-01T00:00:00.000Z",
+  seasonState: {
+    season: 2027,
+    scheduleSeed: 42 ^ 2027,
+    completedFixtures: [],
+    championId: null,
+  },
 };
 
 beforeEach(() => {

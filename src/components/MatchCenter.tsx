@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import type { CareerSave, FranchiseId, Tactics } from "../domain/models";
+import type {
+  CareerSave,
+  Fixture,
+  FranchiseId,
+  Tactics,
+} from "../domain/models";
 import { franchises } from "../data/franchises";
 import { buildEngineTeam } from "../engine/teamBuilder";
 import type {
@@ -18,7 +23,15 @@ const defaultTactics: Tactics = {
   field: "balanced",
 };
 
-export function MatchCenter({ career }: { career: CareerSave }) {
+export function MatchCenter({
+  career,
+  fixture = null,
+  onCompleted,
+}: {
+  career: CareerSave;
+  fixture?: Fixture | null;
+  onCompleted?: (result: MatchSimulationResult) => void | Promise<void>;
+}) {
   const opponents = franchises.filter((team) => team.id !== career.franchiseId);
   const [opponentId, setOpponentId] = useState<FranchiseId>(opponents[0].id);
   const [tossCall, setTossCall] = useState<"heads" | "tails">("heads");
@@ -32,18 +45,22 @@ export function MatchCenter({ career }: { career: CareerSave }) {
   const [error, setError] = useState("");
   const [simulationNumber, setSimulationNumber] = useState(0);
 
-  const userFranchise = franchises.find((team) => team.id === career.franchiseId)!;
-  const oppositionFranchise = franchises.find((team) => team.id === opponentId)!;
+  const scheduledFixture = fixture !== null;
+  const homeId = fixture?.homeId ?? career.franchiseId;
+  const awayId = fixture?.awayId ?? opponentId;
+  const homeFranchise = franchises.find((team) => team.id === homeId)!;
+  const awayFranchise = franchises.find((team) => team.id === awayId)!;
   const releasedIds =
     loadRetentionSubmission(career.franchiseId)?.releasedPlayerIds ?? [];
-  const userTeam = useMemo(
-    () => buildEngineTeam(career.franchiseId, releasedIds),
-    [career.franchiseId, releasedIds.join(":")],
+  const homeTeam = useMemo(
+    () => buildEngineTeam(homeId, homeId === career.franchiseId ? releasedIds : []),
+    [career.franchiseId, homeId, releasedIds.join(":")],
   );
-  const oppositionTeam = useMemo(
-    () => buildEngineTeam(opponentId),
-    [opponentId],
+  const awayTeam = useMemo(
+    () => buildEngineTeam(awayId, awayId === career.franchiseId ? releasedIds : []),
+    [awayId, career.franchiseId, releasedIds.join(":")],
   );
+  const userTeam = homeId === career.franchiseId ? homeTeam : awayTeam;
 
   useEffect(() => {
     if (!playing || !result) return;
@@ -90,15 +107,16 @@ export function MatchCenter({ career }: { career: CareerSave }) {
           simulationNumber * 2_654_435_761) >>>
         0;
       const matchResult = await runMatchSimulation({
-        fixtureId: `exhibition-${career.franchiseId}-${opponentId}-${career.currentDate}`,
+        fixtureId: fixture?.id ?? `exhibition-${career.franchiseId}-${opponentId}-${career.currentDate}`,
         seed,
-        home: userTeam,
-        away: oppositionTeam,
+        home: homeTeam,
+        away: awayTeam,
         userTeamId: career.franchiseId,
         tossCall,
         tossDecision,
         tactics,
       });
+      await onCompleted?.(matchResult);
       setResult(matchResult);
       setCursor(0);
       setPlaying(true);
@@ -116,9 +134,15 @@ export function MatchCenter({ career }: { career: CareerSave }) {
       <section className="match-setup-page">
         <div className="match-page-heading">
           <div>
-            <p className="eyebrow">Vertical slice 2 · Exhibition</p>
+            <p className="eyebrow">
+              {scheduledFixture ? "IPL 2027 · Scheduled fixture" : "Vertical slice 2 · Exhibition"}
+            </p>
             <h1>Match centre</h1>
-            <p>Set the plan, call the toss and hand the fixture to the deterministic match worker.</p>
+            <p>
+              {scheduledFixture
+                ? `${homeFranchise.shortName} vs ${awayFranchise.shortName} · ${fixture?.date}`
+                : "Set the plan, call the toss and hand the fixture to the deterministic match worker."}
+            </p>
           </div>
           <span>Seeded simulation</span>
         </div>
@@ -126,24 +150,34 @@ export function MatchCenter({ career }: { career: CareerSave }) {
         <div className="match-setup-grid">
           <article className="fixture-builder">
             <div className="matchup-team">
-              <TeamBadge team={userFranchise} size="large" />
-              <div><span>Your XI</span><strong>{userFranchise.name}</strong><small>{userFranchise.venue}</small></div>
+              <TeamBadge team={homeFranchise} size="large" />
+              <div>
+                <span>{homeId === career.franchiseId ? "Your XI" : "AI XI"}</span>
+                <strong>{homeFranchise.name}</strong><small>{homeFranchise.venue}</small>
+              </div>
             </div>
             <div className="versus-mark"><i /><strong>VS</strong><i /></div>
-            <label className="opponent-picker">
-              <span>Opponent</span>
-              <select
-                value={opponentId}
-                onChange={(event) => setOpponentId(event.target.value as FranchiseId)}
-              >
-                {opponents.map((team) => (
-                  <option key={team.id} value={team.id}>{team.name}</option>
-                ))}
-              </select>
-            </label>
+            {scheduledFixture ? (
+              <div className="opponent-picker"><span>Stage</span><strong>{fixture?.stage.replace("-", " ")}</strong></div>
+            ) : (
+              <label className="opponent-picker">
+                <span>Opponent</span>
+                <select
+                  value={opponentId}
+                  onChange={(event) => setOpponentId(event.target.value as FranchiseId)}
+                >
+                  {opponents.map((team) => (
+                    <option key={team.id} value={team.id}>{team.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <div className="matchup-team is-away">
-              <TeamBadge team={oppositionFranchise} size="large" />
-              <div><span>AI XI</span><strong>{oppositionFranchise.name}</strong><small>Balanced AI tactics</small></div>
+              <TeamBadge team={awayFranchise} size="large" />
+              <div>
+                <span>{awayId === career.franchiseId ? "Your XI" : "AI XI"}</span>
+                <strong>{awayFranchise.name}</strong><small>Balanced AI tactics</small>
+              </div>
             </div>
             <div className="xi-strip">
               <span>Selected XI</span>

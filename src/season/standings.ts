@@ -1,15 +1,12 @@
-import type { FranchiseId } from "../domain/models";
+import type {
+  CompletedFixture,
+  FranchiseId,
+  Fixture,
+} from "../domain/models";
 import { franchises } from "../data/franchises";
+import type { MatchSimulationResult } from "../engine/types";
 
-export interface CompletedFixture {
-  fixtureId: string;
-  homeId: FranchiseId;
-  awayId: FranchiseId;
-  homeRuns: number;
-  homeBalls: number;
-  awayRuns: number;
-  awayBalls: number;
-}
+export type { CompletedFixture } from "../domain/models";
 
 export interface Standing {
   franchiseId: FranchiseId;
@@ -19,6 +16,32 @@ export interface Standing {
   tied: number;
   points: number;
   netRunRate: number;
+}
+
+export function completedFixtureFromMatch(
+  fixture: Fixture,
+  result: MatchSimulationResult,
+): CompletedFixture {
+  const homeInnings = result.innings.find(
+    (innings) => innings.battingTeamId === fixture.homeId,
+  );
+  const awayInnings = result.innings.find(
+    (innings) => innings.battingTeamId === fixture.awayId,
+  );
+
+  if (!homeInnings || !awayInnings) {
+    throw new Error("Match result does not contain both fixture teams");
+  }
+
+  return {
+    fixtureId: fixture.id,
+    homeId: fixture.homeId,
+    awayId: fixture.awayId,
+    homeRuns: homeInnings.runs,
+    homeBalls: homeInnings.legalBalls,
+    awayRuns: awayInnings.runs,
+    awayBalls: awayInnings.legalBalls,
+  };
 }
 
 export function calculateStandings(results: CompletedFixture[]): Standing[] {

@@ -1,17 +1,45 @@
 import { useMemo, useState } from "react";
-import type { CareerSave } from "../domain/models";
+import type { CareerSave, Fixture } from "../domain/models";
 import { franchises } from "../data/franchises";
 import { generateSeasonSchedule } from "../season/schedule";
 import { MatchCenter } from "./MatchCenter";
 import { TeamBadge } from "./TeamBadge";
-import { calculateStandings } from "../season/standings";
+import {
+  calculateStandings,
+  completedFixtureFromMatch,
+} from "../season/standings";
+import {
+  simulatePlayoffs,
+  simulateUnplayedAIFixtures,
+} from "../season/seasonEngine";
+import { resolvePlayoffFixtures } from "../season/playoffs";
+import type { MatchSimulationResult } from "../engine/types";
+import { saveCareer } from "../services/careerStore";
 
-export function SeasonPage({ career }: { career: CareerSave }) {
+export function SeasonPage({
+  career,
+  onCareerUpdated,
+}: {
+  career: CareerSave;
+  onCareerUpdated: (career: CareerSave) => void;
+}) {
   const [tab, setTab] = useState<"schedule" | "standings" | "match">("schedule");
   const [filter, setFilter] = useState<"mine" | "all">("mine");
+  const [activeFixture, setActiveFixture] = useState<Fixture | null>(null);
+  const [simulatingAI, setSimulatingAI] = useState(false);
+  const [simulatingPlayoffs, setSimulatingPlayoffs] = useState(false);
+  const [seasonError, setSeasonError] = useState("");
   const schedule = useMemo(
-    () => generateSeasonSchedule(career.seed ^ 2027),
-    [career.seed],
+    () => generateSeasonSchedule(career.seasonState.scheduleSeed),
+    [career.seasonState.scheduleSeed],
+  );
+  const completedById = useMemo(
+    () => new Map(career.seasonState.completedFixtures.map((result) => [result.fixtureId, result])),
+    [career.seasonState.completedFixtures],
+  );
+  const leagueFixtureIds = useMemo(
+    () => new Set(schedule.leagueFixtures.map((fixture) => fixture.id)),
+    [schedule.leagueFixtures],
   );
   const fixtures =
     filter === "mine"
@@ -21,7 +49,121 @@ export function SeasonPage({ career }: { career: CareerSave }) {
             fixture.awayId === career.franchiseId,
         )
       : schedule.leagueFixtures;
-  const standings = useMemo(() => calculateStandings([]), []);
+  const standings = useMemo(
+    () => calculateStandings(
+      career.seasonState.completedFixtures.filter((result) => leagueFixtureIds.has(result.fixtureId)),
+    ),
+    [career.seasonState.completedFixtures, leagueFixtureIds],
+  );
+  const leagueComplete = schedule.leagueFixtures.every((fixture) => completedById.has(fixture.id));
+  const playoffFixtures = useMemo(
+    () => leagueComplete
+      ? resolvePlayoffFixtures(schedule, standings, career.seasonState.completedFixtures)
+      : [],
+    [career.seasonState.completedFixtures, leagueComplete, schedule, standings],
+  );
+  const aiFixturesRemaining = useMemo(
+    () => schedule.leagueFixtures.filter(
+      (fixture) =>
+        !completedById.has(fixture.id) &&
+        fixture.homeId !== career.franchiseId &&
+        fixture.awayId !== career.franchiseId,
+    ).length,
+    [career.franchiseId, completedById, schedule.leagueFixtures],
+  );
+
+  async function simulateAIFixtures(): Promise<void> {
+    if (simulatingAI || aiFixturesRemaining === 0) return;
+    setSimulatingAI(true);
+    setSeasonError("");
+    try {
+      const simulated = simulateUnplayedAIFixtures(
+        schedule.leagueFixtures,
+        career.seasonState.completedFixtures,
+        career.seasonState.scheduleSeed,
+        career.franchiseId,
+      );
+      if (!simulated.length) return;
+
+      const updated: CareerSave = {
+        ...career,
+        seasonState: {
+          ...career.seasonState,
+          completedFixtures: [
+            ...career.seasonState.completedFixtures,
+            ...simulated,
+          ],
+        },
+      };
+      await saveCareer(updated);
+      onCareerUpdated(updated);
+    } catch (error) {
+      setSeasonError(error instanceof Error ? error.message : "Unable to simulate league fixtures");
+    } finally {
+      setSimulatingAI(false);
+    }
+  }
+
+  async function simulatePlayoffSeries(): Promise<void> {
+    if (
+      simulatingPlayoffs ||
+      !leagueComplete ||
+      career.seasonState.championId !== null
+    ) return;
+
+    setSimulatingPlayoffs(true);
+    setSeasonError("");
+    try {
+      const series = simulatePlayoffs(
+        schedule,
+        standings,
+        career.seasonState.completedFixtures,
+        career.seasonState.scheduleSeed,
+      );
+      if (!series.results.length || !series.championId) {
+        throw new Error("Unable to resolve the playoff bracket");
+      }
+
+      const updated: CareerSave = {
+        ...career,
+        seasonState: {
+          ...career.seasonState,
+          completedFixtures: [
+            ...career.seasonState.completedFixtures,
+            ...series.results,
+          ],
+          championId: series.championId,
+        },
+      };
+      await saveCareer(updated);
+      onCareerUpdated(updated);
+    } catch (error) {
+      setSeasonError(error instanceof Error ? error.message : "Unable to simulate playoffs");
+    } finally {
+      setSimulatingPlayoffs(false);
+    }
+  }
+
+  async function recordFixtureResult(
+    fixture: Fixture,
+    result: MatchSimulationResult,
+  ): Promise<void> {
+    if (completedById.has(fixture.id)) return;
+
+    const completedFixture = completedFixtureFromMatch(fixture, result);
+    const updated: CareerSave = {
+      ...career,
+      seasonState: {
+        ...career.seasonState,
+        completedFixtures: [
+          ...career.seasonState.completedFixtures,
+          completedFixture,
+        ],
+      },
+    };
+    await saveCareer(updated);
+    onCareerUpdated(updated);
+  }
 
   return (
     <div className="season-page">
@@ -38,14 +180,22 @@ export function SeasonPage({ career }: { career: CareerSave }) {
       </div>
 
       {tab === "match" ? (
-        <MatchCenter career={career} />
+        <MatchCenter
+          career={career}
+          fixture={activeFixture}
+          onCompleted={
+            activeFixture
+              ? (result) => recordFixtureResult(activeFixture, result)
+              : undefined
+          }
+        />
       ) : tab === "standings" ? (
         <section className="standings-page">
           <div className="schedule-heading">
             <div>
               <p className="eyebrow">League table</p>
               <h1>Standings</h1>
-              <p>The table is ready to consume completed fixtures when the season simulation is connected.</p>
+              <p>Completed scheduled matches update points, wins, losses, and net run rate here.</p>
             </div>
           </div>
           <div className="standings-table-wrap">
@@ -69,7 +219,11 @@ export function SeasonPage({ career }: { career: CareerSave }) {
               </tbody>
             </table>
           </div>
-          <div className="preseason-table-note">Preseason · no results recorded</div>
+          <div className="preseason-table-note">
+            {career.seasonState.completedFixtures.length
+              ? `${career.seasonState.completedFixtures.length} fixture${career.seasonState.completedFixtures.length === 1 ? "" : "s"} recorded`
+              : "Preseason · no results recorded"}
+          </div>
         </section>
       ) : (
         <section className="schedule-page">
@@ -82,7 +236,31 @@ export function SeasonPage({ career }: { career: CareerSave }) {
             <div className="schedule-stat">
               <strong>74</strong><span>Total<br />fixtures</span>
             </div>
+            <button
+              className="schedule-simulate-button"
+              disabled={simulatingAI || aiFixturesRemaining === 0}
+              onClick={simulateAIFixtures}
+            >
+              {simulatingAI ? "Simulating…" : aiFixturesRemaining ? `Simulate ${aiFixturesRemaining} AI fixtures` : "AI fixtures simulated"}
+              <span>→</span>
+            </button>
+            {career.seasonState.championId ? (
+              <strong className="season-champion">
+                Champion: {franchises.find((team) => team.id === career.seasonState.championId)?.shortName}
+              </strong>
+            ) : leagueComplete ? (
+              <button
+                className="schedule-simulate-button"
+                disabled={simulatingPlayoffs}
+                onClick={simulatePlayoffSeries}
+              >
+                {simulatingPlayoffs ? "Resolving playoffs…" : "Resolve playoffs"}
+                <span>→</span>
+              </button>
+            ) : null}
           </div>
+
+          {seasonError && <p className="match-error">{seasonError}</p>}
 
           <div className="schedule-summary">
             <article><span>League stage</span><strong>70</strong><small>20 Mar — {formatDate(schedule.leagueFixtures.at(-1)!.date)}</small></article>
@@ -118,9 +296,18 @@ export function SeasonPage({ career }: { career: CareerSave }) {
                         <TeamBadge team={away} size="small" /><span>{away.shortName}</span>
                       </div>
                       <em>{home.venue}</em>
-                      {filter === "mine" && index === 0 && (
-                        <button onClick={() => setTab("match")}>Preview match →</button>
-                      )}
+                      {completedById.has(fixture.id) ? (
+                        <span className="fixture-complete">Result recorded</span>
+                      ) : fixture.homeId === career.franchiseId || fixture.awayId === career.franchiseId ? (
+                        <button
+                          onClick={() => {
+                            setActiveFixture(fixture);
+                            setTab("match");
+                          }}
+                        >
+                          Play match →
+                        </button>
+                      ) : null}
                     </div>
                   );
                 })}
@@ -131,18 +318,36 @@ export function SeasonPage({ career }: { career: CareerSave }) {
               <div className="playoff-heading">
                 <span>Playoffs</span><em>Top four qualify</em>
               </div>
-              {schedule.playoffs.map((fixture, index) => (
-                <div className="playoff-fixture" key={fixture.id}>
-                  <b>{index + 71}</b>
-                  <div>
-                    <span>{stageLabel(fixture.stage)}</span>
-                    <strong>{fixture.homeSeed} <i>vs</i> {fixture.awaySeed}</strong>
-                    <small>{formatDate(fixture.date)}</small>
+              {schedule.playoffs.map((template, index) => {
+                const resolved = playoffFixtures.find((fixture) => fixture.id === template.id);
+                const completed = completedById.get(template.id);
+                const home = resolved ? franchises.find((team) => team.id === resolved.homeId) : null;
+                const away = resolved ? franchises.find((team) => team.id === resolved.awayId) : null;
+                return (
+                  <div className="playoff-fixture" key={template.id}>
+                    <b>{index + 71}</b>
+                    <div>
+                      <span>{stageLabel(template.stage)}</span>
+                      <strong>
+                        {home && away
+                          ? `${home.shortName} vs ${away.shortName}`
+                          : `${template.homeSeed} vs ${template.awaySeed}`}
+                      </strong>
+                      <small>
+                        {completed
+                          ? `Result ${completed.homeRuns}/${completed.awayRuns}`
+                          : formatDate(template.date)}
+                      </small>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <div className="playoff-note">
-                Participants resolve from the live standings once the league stage is complete.
+                {!leagueComplete
+                  ? "Participants resolve from the live standings once the league stage is complete."
+                  : career.seasonState.championId
+                    ? "Season complete · champion recorded in the career save."
+                    : "The top four are set. Resolve the playoff series to crown a champion."}
               </div>
             </aside>
           </div>

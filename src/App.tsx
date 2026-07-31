@@ -155,7 +155,9 @@ export default function App() {
           {page === "squad" && <SquadPage franchiseId={activeCareer.franchiseId} />}
           {page === "database" && <PlayerBrowser />}
           {page === "settings" && <SettingsPage career={activeCareer} />}
-          {page === "calendar" && <SeasonPage career={activeCareer} />}
+          {page === "calendar" && (
+            <SeasonPage career={activeCareer} onCareerUpdated={setCareer} />
+          )}
           {page === "auction" && (
             <section className="placeholder-page">
               <p className="eyebrow">Coming in the next slice</p>
